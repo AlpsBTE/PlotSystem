@@ -45,20 +45,19 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static net.kyori.adventure.text.Component.text;
-
 public class CityProjectMenu extends AbstractPaginatedMenu {
     final Country country;
     List<CityProject> projects;
     private PlotDifficulty selectedPlotDifficulty;
 
-    CityProjectMenu(Player player, Country country, PlotDifficulty selectedPlotDifficulty) {
+    CityProjectMenu(Player player, @NotNull Country country, PlotDifficulty selectedPlotDifficulty) {
         super(6, 4, country.getName() + " → " + LangUtil.getInstance().get(player, LangPaths.MenuTitle.COMPANION_SELECT_CITY), player);
         this.country = country;
         this.selectedPlotDifficulty = selectedPlotDifficulty;
@@ -144,7 +143,7 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
         });
     }
 
-    public static boolean generateRandomPlot(Player player, List<CityProject> items, PlotDifficulty selectedPlotDifficulty) {
+    public static boolean generateRandomPlot(Player player, @NotNull List<CityProject> items, PlotDifficulty selectedPlotDifficulty) {
         if (items.isEmpty()) {
             player.playSound(player, Utils.SoundUtils.ERROR_SOUND, 1, 1);
             return false;
@@ -202,14 +201,14 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
     }
 
     @Override
-    protected void setPaginatedMenuItemsAsync(List<?> source) {
+    protected void setPaginatedMenuItemsAsync(@NotNull List<?> source) {
         List<CityProject> cities = source.stream().map(l -> (CityProject) l).toList();
         int slot = 9;
         for (CityProject city : cities) {
             try {
                 getMenu().getSlot(slot).setItem(city.getItem(getMenuPlayer(), selectedPlotDifficulty));
             } catch (SQLException e) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), e);
+                Utils.logSqlException(e);
                 getMenu().getSlot(slot).setItem(MenuItems.errorItem(getMenuPlayer()));
             }
             slot++;
@@ -217,7 +216,7 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
     }
 
     @Override
-    protected void setPaginatedItemClickEventsAsync(List<?> source) {
+    protected void setPaginatedItemClickEventsAsync(@NotNull List<?> source) {
         List<CityProject> cities = source.stream().map(l -> (CityProject) l).toList();
         int slot = 9;
         for (CityProject city : cities) {
@@ -255,8 +254,8 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
         }
     }
 
-    private static void sqlError(Player clickPlayer, Exception ex) {
-        PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
+    private static void sqlError(@NotNull Player clickPlayer, Exception ex) {
+        Utils.logSqlException(ex);
         clickPlayer.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(clickPlayer, LangPaths.Message.Error.ERROR_OCCURRED)));
         clickPlayer.playSound(clickPlayer.getLocation(), Utils.SoundUtils.ERROR_SOUND, 1, 1);
         Thread.currentThread().interrupt();

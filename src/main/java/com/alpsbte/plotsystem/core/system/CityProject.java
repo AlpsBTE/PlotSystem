@@ -38,10 +38,12 @@ import com.alpsbte.plotsystem.utils.items.MenuItems;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static net.kyori.adventure.text.Component.text;
@@ -90,7 +92,7 @@ public class CityProject {
         return description;
     }
 
-    public ArrayList<Component> getDescriptionComponents() {
+    public List<Component> getDescriptionComponents() {
         ArrayList<Component> descriptionLines = new ArrayList<>();
         for (String line : getDescription().split("%newline%")) descriptionLines.add(text(line));
         return descriptionLines;
@@ -133,12 +135,13 @@ public class CityProject {
                             .build())
                     .build();
         } catch (SQLException | ExecutionException | InterruptedException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
+            Utils.logSqlException(ex);
+            Thread.currentThread().interrupt();
             return MenuItems.errorItem(player);
         }
     }
 
-    public static List<CityProject> getCityProjects(Country country, boolean onlyVisible) {
+    public static @NotNull List<CityProject> getCityProjects(Country country, boolean onlyVisible) {
         // if country is not null, only get country's city projects, otherwise load all
         DatabaseConnection.StatementBuilder statement = DatabaseConnection.createStatement("SELECT id FROM plotsystem_city_projects " + (country == null ? "" : "WHERE country_id = ?") + " ORDER BY country_id");
         if (country != null) statement.setValue(country.getID());
@@ -163,11 +166,11 @@ public class CityProject {
     }
 
 
-    public static List<CityProject> getCityProjects(boolean onlyVisible) {
+    public static @NotNull List<CityProject> getCityProjects(boolean onlyVisible) {
         return getCityProjects(null, onlyVisible);
     }
 
-    public static void addCityProject(Country country, String name) throws SQLException {
+    public static void addCityProject(@NotNull Country country, String name) throws SQLException {
         DatabaseConnection.createStatement("INSERT INTO plotsystem_city_projects (id, name, country_id, description, visible) VALUES (?, ?, ?, ?, ?)")
                 .setValue(DatabaseConnection.getTableID("plotsystem_city_projects"))
                 .setValue(name)

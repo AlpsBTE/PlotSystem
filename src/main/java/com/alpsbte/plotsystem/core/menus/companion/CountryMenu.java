@@ -32,11 +32,11 @@ import com.alpsbte.plotsystem.core.menus.tutorial.TutorialsMenu;
 import com.alpsbte.plotsystem.core.system.CityProject;
 import com.alpsbte.plotsystem.core.system.Country;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
-import com.alpsbte.plotsystem.utils.enums.Continent;
-import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.Utils;
+import com.alpsbte.plotsystem.utils.enums.Continent;
 import com.alpsbte.plotsystem.utils.enums.PlotDifficulty;
 import com.alpsbte.plotsystem.utils.enums.Status;
+import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
@@ -45,6 +45,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ public class CountryMenu extends AbstractMenu {
     private final Continent selectedContinent;
     private PlotDifficulty selectedPlotDifficulty = null;
 
-    CountryMenu(Player player, Continent continent) {
+    CountryMenu(Player player, @NotNull Continent continent) {
         super(6, LangUtil.getInstance().get(player, continent.langPath) + " → " + LangUtil.getInstance().get(player, LangPaths.MenuTitle.COMPANION_SELECT_COUNTRY), player);
         selectedContinent = continent;
     }
@@ -95,9 +96,7 @@ public class CountryMenu extends AbstractMenu {
         try {
             countryProjects = Country.getCountries(selectedContinent);
             setCountryItems();
-        } catch (SQLException ex) {
-            PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
-        }
+        } catch (SQLException ex) {Utils.logSqlException(ex);}
     }
 
     @Override
@@ -116,9 +115,7 @@ public class CountryMenu extends AbstractMenu {
 
             try {
                 setCountryItems();
-            } catch (SQLException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
-            }
+            } catch (SQLException ex) {Utils.logSqlException(ex);}
         }));
 
         // Set click event for tutorial item
@@ -147,7 +144,7 @@ public class CountryMenu extends AbstractMenu {
         }
     }
 
-    public static boolean generateRandomPlot(Player clickPlayer, List<Country> countryProjects, PlotDifficulty selectedPlotDifficulty) {
+    public static boolean generateRandomPlot(Player clickPlayer, @NotNull List<Country> countryProjects, PlotDifficulty selectedPlotDifficulty) {
         List<CityProject> cityProjects = new ArrayList<>();
         for (Country curCountry : countryProjects) {
             cityProjects.addAll(CityProjectMenu.getValidCityProjects(selectedPlotDifficulty, clickPlayer, curCountry));

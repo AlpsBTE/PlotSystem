@@ -26,7 +26,6 @@ plot:
   status: "Status"
   score: "Punktestand"
   total-score: "Gesamtpunktestand"
-  effective-score: "Effektiver Punktestand"
   completed-plots: "Abgeschlossene Plots"
   group-system:
     empty-member-slot: "Leerer Mitglied-Slot"
@@ -99,7 +98,6 @@ menu-title:
   leave-plot: 'Plot Verlassen'
   review-plots: 'Plots Bewerten'
   review-plot: 'Plot #{0} Bewerten'
-  enter-player-name: 'Spielername Eingeben'
   select-language: 'Sprache Auswählen'
   select-plot-type: 'Plot Typ Auswählen'
   select-focus-mode: 'Focus-Mode Auswählen'
