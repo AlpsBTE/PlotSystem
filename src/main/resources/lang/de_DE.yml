@@ -111,6 +111,7 @@ menu-title:
   tutorial-stages: 'Tutorial Stages'
   tutorial-end: 'Tutorial Beenden'
   tutorial-beginner: 'Erste Schritte'
+  companion-random: 'Zufallsauswahl'
 #-----------------------------------------------------
 #| Menu Descriptions
 #-----------------------------------------------------
@@ -125,7 +126,7 @@ menu-description:
   teleport-desc: 'Klicke hier, um dich zum Plot zu teleportieren'
   abandon-desc: 'Klicke hier, um deinen Plot zurückzusetzen und ihn jemand anderem zu geben'
   undo-submit-desc: 'Klicke hier, um deine Eingabe rückgängig zu machen'
-  manage-members-desc: 'Klicke hier, um das Verwaltungsmenü für Mitglieder zu öffnen, in welchem du andere Spieler zu deinem Plot hinzufügen oder entfernen kannst'
+  manage-members-desc: 'Klicke hier, um das Verwaltungsmenü für Mitglieder zu öffnen, in welchem du%newline%andere Spieler zu deinem Plot hinzufügen oder entfernen kannst'
   feedback-desc: 'Klicke hier, um das Feedback zu deinem Plot anzuzeigen'
   custom-heads-desc: 'Klicke hier, um eine Auswahl an benutzerdefinierten Köpfen zu erhalten'
   banner-maker-desc: 'Klicke hier, um deine eigenen Banner zu erstellen und zu speichern'
@@ -144,6 +145,7 @@ menu-description:
   tutorials-desc: 'Lerne die Grundlagen des BuildTheEarth Projekts und erweitere deine Baukenntnisse mit Tutorials zu verschiedenen Themen.'
   tutorial-end-desc: 'Dein Fortschritt wird gespeichert.'
   tutorial-beginner-desc: 'Lerne die Baugrundlagen für das BuildTheEarth Projekt.'
+  companion-random-desc: 'Klicke hier, um zufällig auszuwählen.'
 #-----------------------------------------------------
 #| Review
 #-----------------------------------------------------
