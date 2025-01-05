@@ -35,7 +35,6 @@ import com.alpsbte.plotsystem.utils.enums.Status;
 import com.alpsbte.plotsystem.utils.io.LangPaths;
 import com.alpsbte.plotsystem.utils.io.LangUtil;
 import com.alpsbte.plotsystem.utils.items.MenuItems;
-import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -90,12 +89,6 @@ public class CityProject {
 
     public String getDescription() {
         return description;
-    }
-
-    public List<Component> getDescriptionComponents() {
-        ArrayList<Component> descriptionLines = new ArrayList<>();
-        for (String line : getDescription().split("%newline%")) descriptionLines.add(text(line));
-        return descriptionLines;
     }
 
     public boolean isVisible() {

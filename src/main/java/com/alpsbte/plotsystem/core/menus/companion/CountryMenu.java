@@ -106,28 +106,13 @@ public class CountryMenu extends AbstractMenu {
 
         // Set click event for plots difficulty item
         getMenu().getSlot(6).setClickHandler(((clickPlayer, clickInformation) -> {
-            selectedPlotDifficulty = (selectedPlotDifficulty == null ?
-                    PlotDifficulty.values()[0] : selectedPlotDifficulty.ordinal() != PlotDifficulty.values().length - 1 ?
-                    PlotDifficulty.values()[selectedPlotDifficulty.ordinal() + 1] : null);
-
-            getMenu().getSlot(6).setItem(CompanionMenu.getDifficultyItem(getMenuPlayer(), selectedPlotDifficulty));
-            clickPlayer.playSound(clickPlayer.getLocation(), Utils.SoundUtils.DONE_SOUND, 1, 1);
-
+            selectedPlotDifficulty = CompanionMenu.clickEventPlotDifficulty(selectedPlotDifficulty, clickPlayer, getMenu());
             try {
                 setCountryItems();
             } catch (SQLException ex) {Utils.logSqlException(ex);}
         }));
 
-        // Set click event for tutorial item
-        if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_ENABLE))
-            getMenu().getSlot(7).setClickHandler((clickPlayer, clickInformation) -> {
-                if (!clickPlayer.hasPermission("plotsystem.tutorial")) {
-                    clickPlayer.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(clickPlayer.getUniqueId(),
-                            LangPaths.Message.Error.PLAYER_HAS_NO_PERMISSIONS)));
-                    return;
-                }
-                new TutorialsMenu(clickPlayer);
-            });
+        CompanionMenu.clickEventTutorialItem(getMenu());
 
         int startingSlot = 9;
         if (CompanionMenu.hasContinentView()) {

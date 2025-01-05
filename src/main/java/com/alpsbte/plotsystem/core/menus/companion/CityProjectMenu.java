@@ -121,29 +121,15 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
 
         // Set click event for plots difficulty item
         getMenu().getSlot(6).setClickHandler(((clickPlayer, clickInformation) -> {
-            selectedPlotDifficulty = (selectedPlotDifficulty == null ?
-                    PlotDifficulty.values()[0] : selectedPlotDifficulty.ordinal() != PlotDifficulty.values().length - 1 ?
-                    PlotDifficulty.values()[selectedPlotDifficulty.ordinal() + 1] : null);
-
-            getMenu().getSlot(6).setItem(CompanionMenu.getDifficultyItem(getMenuPlayer(), selectedPlotDifficulty));
-            clickPlayer.playSound(clickPlayer.getLocation(), Utils.SoundUtils.DONE_SOUND, 1, 1);
-
-            // reload displayed cities
-            reloadMenuAsync();
+            selectedPlotDifficulty = CompanionMenu.clickEventPlotDifficulty(selectedPlotDifficulty, clickPlayer, getMenu());
+            reloadMenuAsync(); // reload displayed cities
         }));
 
-        // Set click event for tutorial item
-        getMenu().getSlot(7).setClickHandler((clickPlayer, clickInformation) -> {
-            if (!clickPlayer.hasPermission("plotsystem.tutorial")) {
-                clickPlayer.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(clickPlayer.getUniqueId(),
-                        LangPaths.Message.Error.PLAYER_HAS_NO_PERMISSIONS)));
-                return;
-            }
-            new TutorialsMenu(clickPlayer);
-        });
+        CompanionMenu.clickEventTutorialItem(getMenu());
     }
 
     public static boolean generateRandomPlot(Player player, @NotNull List<CityProject> items, PlotDifficulty selectedPlotDifficulty) {
+        PlotDifficulty difficulty = selectedPlotDifficulty;
         if (items.isEmpty()) {
             player.playSound(player, Utils.SoundUtils.ERROR_SOUND, 1, 1);
             return false;
@@ -152,9 +138,9 @@ public class CityProjectMenu extends AbstractPaginatedMenu {
 
         Builder builder = Builder.byUUID(player.getUniqueId());
         try {
-            if (selectedPlotDifficulty == null) selectedPlotDifficulty = Plot.getPlotDifficultyForBuilder(randomCity.getID(), Builder.byUUID(player.getUniqueId())).get();
-            if (selectedPlotDifficulty == null) selectedPlotDifficulty = PlotDifficulty.EASY;
-            new DefaultPlotGenerator(randomCity.getID(), selectedPlotDifficulty, builder);
+            if (difficulty == null) difficulty = Plot.getPlotDifficultyForBuilder(randomCity.getID(), Builder.byUUID(player.getUniqueId())).get();
+            if (difficulty == null) difficulty = PlotDifficulty.EASY;
+            new DefaultPlotGenerator(randomCity.getID(), difficulty, builder);
         } catch (SQLException | InterruptedException | ExecutionException e) {
             sqlError(player, e);
             return false;
