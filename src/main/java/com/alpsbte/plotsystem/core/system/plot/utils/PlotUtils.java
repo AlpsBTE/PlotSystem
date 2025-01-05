@@ -105,8 +105,8 @@ public final class PlotUtils {
 
     /**
      * Returns the plot that the player is currently standing on or next to.
-     * If he is standing in a single plot world it returns the plot of this world.
-     * If he is standing in a multi plot world it returns the closest plot of all unfinished plots of this city
+     * If he is standing in a single-plot world, it returns the plot of this world.
+     * If he is standing in a multi-plot world, it returns the closest plot of all unfinished plots in this city
      *
      * @return the current plot of the player
      */
@@ -205,8 +205,6 @@ public final class PlotUtils {
             CuboidRegion cuboidRegion = getPlotAsRegion(plot);
 
             if (cuboidRegion != null) {
-                BlockVector3 plotCenter = plot.getCenter();
-
                 // Get plot outline
                 List<BlockVector2> plotOutlines = plot.getOutline();
 
@@ -215,7 +213,7 @@ public final class PlotUtils {
                     com.sk89q.worldedit.world.World world = new BukkitWorld(plot.getWorld().getBukkitWorld());
                     Polygonal2DRegion region = new Polygonal2DRegion(world, plotOutlines, cuboidRegion.getMinimumPoint().y(), cuboidRegion.getMaximumPoint().y());
 
-                    File finishedSchematicFile = getFinalFile(plot, region, plotCenter, cuboidRegion, clipboard);
+                    File finishedSchematicFile = getFinalFile(plot, region, cuboidRegion, clipboard);
                     if (finishedSchematicFile == null) return false;
 
                     // Upload to FTP server
@@ -241,7 +239,7 @@ public final class PlotUtils {
         return false;
     }
 
-    private static @Nullable File getFinalFile(@NotNull Plot plot, Polygonal2DRegion region, BlockVector3 plotCenter, CuboidRegion cuboidRegion, Clipboard clipboard) throws SQLException, IOException {
+    private static @Nullable File getFinalFile(@NotNull Plot plot, Polygonal2DRegion region, CuboidRegion cuboidRegion, Clipboard clipboard) throws SQLException, IOException {
         // Copy and write finished plot clipboard to schematic file
         File finishedSchematicFile = Paths.get(PlotUtils.getDefaultSchematicPath(),
                 String.valueOf(plot.getCity().getCountry().getServer().getID()),
@@ -257,15 +255,14 @@ public final class PlotUtils {
 
         try (Clipboard cb = new BlockArrayClipboard(region)) {
             if (plot.getVersion() >= 3) {
-                cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
+                cb.setOrigin(BlockVector3.at(plot.getCenter().x(), cuboidRegion.getMinimumY(), (double) plot.getCenter().z()));
             } else {
                 BlockVector3 terraCenter = plot.getCoordinates();
-                plotCenter = BlockVector3.at(
+                cb.setOrigin(BlockVector3.at(
                         (double) terraCenter.x() - (double) clipboard.getMinimumPoint().x() + cuboidRegion.getMinimumPoint().x(),
                         (double) terraCenter.y() - (double) clipboard.getMinimumPoint().y() + cuboidRegion.getMinimumPoint().y(),
                         (double) terraCenter.z() - (double) clipboard.getMinimumPoint().z() + cuboidRegion.getMinimumPoint().z()
-                );
-                cb.setOrigin(plotCenter);
+                ));
             }
         }
 
@@ -558,7 +555,7 @@ public final class PlotUtils {
             // get API
             ParticleNativeAPI api = ParticleNativePlugin.getAPI();
 
-            // choose particles lists you want to use
+            // choose particle list you want to use
             particles = api.getParticles_1_8();
         }
 
