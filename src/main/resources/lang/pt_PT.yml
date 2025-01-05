@@ -26,7 +26,6 @@ plot:
   status: "Status"
   score: "Pontuação"
   total-score: "Pontuação Total"
-  effective-score: "Pontuação Efetiva"
   completed-plots: "Terrenos concluídos"
   group-system:
     empty-member-slot: "Espaço de Membro Vazio"
@@ -99,7 +98,6 @@ menu-title:
   leave-plot: "Deixar Terreno"
   review-plots: "Avaliar Terrenos"
   review-plot: "Avaliar Terreno #{0}"
-  enter-player-name: "Insira o Nome do Jogador"
   select-language: "Selecionar Idioma"
   select-plot-type: "Select Plot Type"
   select-focus-mode: "Select Focus Mode"
