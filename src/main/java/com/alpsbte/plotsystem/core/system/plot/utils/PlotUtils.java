@@ -215,39 +215,8 @@ public final class PlotUtils {
                     com.sk89q.worldedit.world.World world = new BukkitWorld(plot.getWorld().getBukkitWorld());
                     Polygonal2DRegion region = new Polygonal2DRegion(world, plotOutlines, cuboidRegion.getMinimumPoint().y(), cuboidRegion.getMaximumPoint().y());
 
-                    // Copy and write finished plot clipboard to schematic file
-                    File finishedSchematicFile = Paths.get(PlotUtils.getDefaultSchematicPath(),
-                            String.valueOf(plot.getCity().getCountry().getServer().getID()),
-                            "finishedSchematics", String.valueOf(plot.getCity().getID()), plot.getID() + SCHEM_ENDING).toFile();
-
-                    if (!finishedSchematicFile.exists()) {
-                        boolean createdDirs = finishedSchematicFile.getParentFile().mkdirs();
-                        boolean createdFile = finishedSchematicFile.createNewFile();
-                        if ((!finishedSchematicFile.getParentFile().exists() && !createdDirs) || (!finishedSchematicFile.exists() && !createdFile)) {
-                            return false;
-                        }
-                    }
-
-                    try (Clipboard cb = new BlockArrayClipboard(region)) {
-                        if (plot.getVersion() >= 3) {
-                            cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
-                        } else {
-                            BlockVector3 terraCenter = plot.getCoordinates();
-                            plotCenter = BlockVector3.at(
-                                    (double) terraCenter.x() - (double) clipboard.getMinimumPoint().x() + cuboidRegion.getMinimumPoint().x(),
-                                    (double) terraCenter.y() - (double) clipboard.getMinimumPoint().y() + cuboidRegion.getMinimumPoint().y(),
-                                    (double) terraCenter.z() - (double) clipboard.getMinimumPoint().z() + cuboidRegion.getMinimumPoint().z()
-                            );
-                            cb.setOrigin(plotCenter);
-                        }
-                    }
-
-                    ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(Objects.requireNonNull(region.getWorld()), region, clipboard, region.getMinimumPoint());
-                    Operations.complete(forwardExtentCopy);
-
-                    try (ClipboardWriter writer = BuiltInClipboardFormat.FAST_V2.getWriter(new FileOutputStream(finishedSchematicFile, false))) {
-                        writer.write(clipboard);
-                    }
+                    File finishedSchematicFile = getFinalFile(plot, region, plotCenter, cuboidRegion, clipboard);
+                    if (finishedSchematicFile == null) return false;
 
                     // Upload to FTP server
                     if (plot.getCity().getCountry().getServer().getFTPConfiguration() != null) {
@@ -270,6 +239,43 @@ public final class PlotUtils {
             }
         }
         return false;
+    }
+
+    private static @Nullable File getFinalFile(@NotNull Plot plot, Polygonal2DRegion region, BlockVector3 plotCenter, CuboidRegion cuboidRegion, Clipboard clipboard) throws SQLException, IOException {
+        // Copy and write finished plot clipboard to schematic file
+        File finishedSchematicFile = Paths.get(PlotUtils.getDefaultSchematicPath(),
+                String.valueOf(plot.getCity().getCountry().getServer().getID()),
+                "finishedSchematics", String.valueOf(plot.getCity().getID()), plot.getID() + SCHEM_ENDING).toFile();
+
+        if (!finishedSchematicFile.exists()) {
+            boolean createdDirs = finishedSchematicFile.getParentFile().mkdirs();
+            boolean createdFile = finishedSchematicFile.createNewFile();
+            if ((!finishedSchematicFile.getParentFile().exists() && !createdDirs) || (!finishedSchematicFile.exists() && !createdFile)) {
+                return null;
+            }
+        }
+
+        try (Clipboard cb = new BlockArrayClipboard(region)) {
+            if (plot.getVersion() >= 3) {
+                cb.setOrigin(BlockVector3.at(plotCenter.x(), cuboidRegion.getMinimumY(), (double) plotCenter.z()));
+            } else {
+                BlockVector3 terraCenter = plot.getCoordinates();
+                plotCenter = BlockVector3.at(
+                        (double) terraCenter.x() - (double) clipboard.getMinimumPoint().x() + cuboidRegion.getMinimumPoint().x(),
+                        (double) terraCenter.y() - (double) clipboard.getMinimumPoint().y() + cuboidRegion.getMinimumPoint().y(),
+                        (double) terraCenter.z() - (double) clipboard.getMinimumPoint().z() + cuboidRegion.getMinimumPoint().z()
+                );
+                cb.setOrigin(plotCenter);
+            }
+        }
+
+        ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(Objects.requireNonNull(region.getWorld()), region, clipboard, region.getMinimumPoint());
+        Operations.complete(forwardExtentCopy);
+
+        try (ClipboardWriter writer = BuiltInClipboardFormat.FAST_V2.getWriter(new FileOutputStream(finishedSchematicFile, false))) {
+            writer.write(clipboard);
+        }
+        return finishedSchematicFile;
     }
 
     public static @Nullable CompletableFuture<double[]> convertTerraToPlotXZ(@NotNull AbstractPlot plot, double[] terraCoords) throws IOException, SQLException {
@@ -432,7 +438,10 @@ public final class PlotUtils {
                 PlotSystem.getPlugin().getComponentLogger().error(text("Failed to abandon plot with the ID " + plot.getID() + "!"), ex);
                 return false;
             }
+            return updateDatabase(plot);
+        }
 
+        private static boolean updateDatabase(@NotNull AbstractPlot plot) {
             try {
                 CompletableFuture.runAsync(() -> {
                     try {
