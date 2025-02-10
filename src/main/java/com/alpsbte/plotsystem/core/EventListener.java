@@ -25,7 +25,9 @@
 package com.alpsbte.plotsystem.core;
 
 import com.alpsbte.plotsystem.PlotSystem;
+import com.alpsbte.plotsystem.core.database.DataProvider;
 import com.alpsbte.plotsystem.core.menus.companion.CompanionMenu;
+import com.alpsbte.plotsystem.core.system.Country;
 import com.alpsbte.plotsystem.core.system.plot.TutorialPlot;
 import com.alpsbte.plotsystem.core.system.plot.utils.PlotUtils;
 import com.alpsbte.plotsystem.core.system.plot.world.PlotWorld;
@@ -39,7 +41,6 @@ import com.alpsbte.plotsystem.utils.chat.PlayerInviteeChatInput;
 import com.alpsbte.plotsystem.utils.chat.PlayerFeedbackChatInput;
 import com.alpsbte.plotsystem.utils.io.ConfigPaths;
 import com.alpsbte.plotsystem.core.menus.ReviewMenu;
-import com.alpsbte.plotsystem.core.database.DatabaseConnection;
 import com.alpsbte.plotsystem.core.system.plot.Plot;
 import com.alpsbte.plotsystem.core.system.Builder;
 import com.alpsbte.plotsystem.core.system.plot.generator.DefaultPlotGenerator;
@@ -55,6 +56,7 @@ import com.sk89q.worldguard.protection.regions.RegionQuery;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import li.cinnazeyy.langlibs.core.event.LanguageChangeEvent;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -72,14 +74,18 @@ import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.GOLD;
+import static net.kyori.adventure.text.format.NamedTextColor.GREEN;
+import static net.kyori.adventure.text.format.TextDecoration.BOLD;
 
 public class EventListener implements Listener {
     @EventHandler
@@ -87,101 +93,22 @@ public class EventListener implements Listener {
         // User has joined for the first time
         // Adding user to the database
         Bukkit.getScheduler().runTaskAsynchronously(PlotSystem.getPlugin(), () -> {
+            Player player = event.getPlayer();
+
             // Add Items
-            Utils.updatePlayerInventorySlots(event.getPlayer());
+            Utils.updatePlayerInventorySlots(player);
 
-            // Check if player even exists in database.
-            try (ResultSet rs = DatabaseConnection.createStatement("SELECT * FROM plotsystem_builders WHERE uuid = ?")
-                    .setValue(event.getPlayer().getUniqueId().toString()).executeQuery()) {
+            // Create builder if it does not exist in database.
+            boolean successful = DataProvider.BUILDER.addBuilderIfNotExists(player.getUniqueId(), player.getName());
+            if (!successful) PlotSystem.getPlugin().getComponentLogger().error(text("BUILDER COULD NOT BE CREATED!!"));
 
-                if (!rs.first()) {
-                    DatabaseConnection.createStatement("INSERT INTO plotsystem_builders (uuid, name) VALUES (?, ?)")
-                            .setValue(event.getPlayer().getUniqueId().toString())
-                            .setValue(event.getPlayer().getName())
-                            .executeUpdate();
-                }
-
-                DatabaseConnection.closeResultSet(rs);
-            } catch (SQLException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
+            // Check if player has changed their name
+            Builder builder = Builder.byUUID(player.getUniqueId());
+            if (!builder.getName().equals(player.getName())) {
+                builder.setName(player.getName());
             }
 
-            // Inform player about update
-            if (event.getPlayer().hasPermission("plotsystem.admin") && PlotSystem.UpdateChecker.updateAvailable() && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.CHECK_FOR_UPDATES)) {
-                event.getPlayer().sendMessage(Utils.ChatUtils.getInfoFormat("There is a new update for the Plot-System available. Check your console for more information!"));
-                event.getPlayer().playSound(event.getPlayer().getLocation(), Utils.SoundUtils.NOTIFICATION_SOUND, 1f, 1f);
-            }
-
-            // Check if player has changed his name
-            Builder builder = Builder.byUUID(event.getPlayer().getUniqueId());
-            try {
-                if (!builder.getName().equals(event.getPlayer().getName())) {
-                    DatabaseConnection.createStatement("UPDATE plotsystem_builders SET name = ? WHERE uuid = ?")
-                            .setValue(event.getPlayer().getName()).setValue(event.getPlayer().getUniqueId().toString()).executeUpdate();
-                }
-            } catch (SQLException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
-            }
-
-            // Informing player about new feedback
-            try {
-                List<Plot> plots = Plot.getPlots(builder, Status.completed, Status.unfinished);
-                List<Plot> reviewedPlots = new ArrayList<>();
-
-                for (Plot plot : plots) {
-                    if (plot.isReviewed() && !plot.getReview().isFeedbackSent()) {
-                        reviewedPlots.add(plot);
-                        plot.getReview().setFeedbackSent(true);
-                    }
-                }
-
-                if (!reviewedPlots.isEmpty()) {
-                    PlotUtils.ChatFormatting.sendFeedbackMessage(reviewedPlots, event.getPlayer());
-                    event.getPlayer().sendTitle("", "§6§l" + reviewedPlots.size() + " §a§lPlot" + (reviewedPlots.size() == 1 ? " " : "s ") + (reviewedPlots.size() == 1 ? "has" : "have") + " been reviewed!", 20, 150, 20);
-                }
-            } catch (Exception ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while trying to inform the player about his plot feedback!"), ex);
-            }
-
-            // Informing player about unfinished plots
-            try {
-                List<Plot> plots = Plot.getPlots(builder, Status.unfinished);
-                if (!plots.isEmpty()) {
-                    PlotUtils.ChatFormatting.sendUnfinishedPlotReminderMessage(plots, event.getPlayer());
-                    event.getPlayer().sendMessage("");
-                }
-            } catch (Exception ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while trying to inform the player about his unfinished plots!"), ex);
-            }
-
-            // Informing reviewer about new reviews
-            try {
-                if (event.getPlayer().hasPermission("plotsystem.review") && builder.isReviewer()) {
-                    List<Plot> unreviewedPlots = Plot.getPlots(builder.getAsReviewer().getCountries(), Status.unreviewed);
-
-                    if (!unreviewedPlots.isEmpty()) {
-                        PlotUtils.ChatFormatting.sendUnreviewedPlotsReminderMessage(unreviewedPlots, event.getPlayer());
-                    }
-                }
-            } catch (Exception ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while trying to inform the player about unreviewed plots!"), ex);
-            }
-
-            // Start or notify the player if he has not completed the beginner tutorial yet (only if required)
-            try {
-                if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL) &&
-                        !TutorialPlot.isPlotCompleted(event.getPlayer(), TutorialCategory.BEGINNER.getId())) {
-                    if (!event.getPlayer().hasPlayedBefore()) {
-                        Bukkit.getScheduler().runTask(PlotSystem.getPlugin(),
-                                () -> event.getPlayer().performCommand("tutorial " + TutorialCategory.BEGINNER.getId()));
-                    } else {
-                        AbstractPlotTutorial.sendTutorialRequiredMessage(event.getPlayer(), TutorialCategory.BEGINNER.getId());
-                        event.getPlayer().playSound(event.getPlayer().getLocation(), Utils.SoundUtils.NOTIFICATION_SOUND, 1f, 1f);
-                    }
-                }
-            } catch (SQLException ex) {
-                PlotSystem.getPlugin().getComponentLogger().error(text("A SQL error occurred!"), ex);
-            }
+            sendNotices(event.getPlayer(), builder);
         });
     }
 
@@ -196,33 +123,11 @@ public class EventListener implements Listener {
         }
 
         // Open/Close iron trap door when right-clicking
-        if (event.getAction().equals(Action.RIGHT_CLICK_AIR) || event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
-            if (event.getHand() != EquipmentSlot.OFF_HAND) {
-                if (!event.getPlayer().isSneaking()) {
-                    if (event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.IRON_TRAPDOOR) {
-                        RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
-                        RegionQuery query = regionContainer.createQuery();
-
-                        if (query.testBuild(BukkitAdapter.adapt(event.getPlayer().getLocation()), PlotSystem.DependencyManager.getWorldGuard().wrapPlayer(event.getPlayer()), Flags.INTERACT)) {
-                            BlockState state = event.getClickedBlock().getState();
-                            Openable tp = (Openable) state.getBlockData();
-                            if (!tp.isOpen()) {
-                                tp.setOpen(true);
-                                event.getPlayer().playSound(event.getClickedBlock().getLocation(), "block.iron_trapdoor.open", 1f, 1f);
-                            } else {
-                                tp.setOpen(false);
-                                event.getPlayer().playSound(event.getClickedBlock().getLocation(), "block.iron_trapdoor.close", 1f, 1f);
-                            }
-                            state.update();
-                        }
-                    }
-                }
-            }
-        }
+        handleIronTrapdoorClick(event);
     }
 
     @EventHandler
-    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) throws SQLException {
+    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
         if (event.getRightClicked().getType().equals(EntityType.PLAYER) && event.getHand() == EquipmentSlot.HAND) {
             event.getPlayer().performCommand("plots " + Builder.byUUID(event.getRightClicked().getUniqueId()).getName());
         }
@@ -272,7 +177,7 @@ public class EventListener implements Listener {
         if (event.getWhoClicked().getGameMode() == GameMode.CREATIVE) {
             if (event.getCursor().isSimilar(CompanionMenu.getMenuItem((Player) event.getWhoClicked())) ||
                     event.getCursor().isSimilar(ReviewMenu.getMenuItem((Player) event.getWhoClicked()))) {
-                event.setCursor(ItemStack.empty());
+                event.getView().setCursor(ItemStack.empty());
                 event.setCancelled(true);
             }
         }
@@ -313,7 +218,7 @@ public class EventListener implements Listener {
                 if (player == null) {
                     event.getPlayer().sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance()
                             .get(event.getPlayer(), LangPaths.Message.Error.PLAYER_NOT_FOUND)));
-                } else if (!player.isOnline() || !TutorialPlot.isPlotCompleted(player, TutorialCategory.BEGINNER.getId())) {
+                } else if (!player.isOnline() || TutorialPlot.isInProgress(TutorialCategory.BEGINNER.getId(), player.getUniqueId())) {
                     event.getPlayer().sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance()
                             .get(event.getPlayer(), LangPaths.Message.Error.PLAYER_IS_NOT_ONLINE)));
                 } else if (inviteeInput.getPlot().getPlotMembers().contains(Builder.byUUID(player.getUniqueId()))) {
@@ -336,5 +241,95 @@ public class EventListener implements Listener {
     @EventHandler
     public void onLanguageChange(LanguageChangeEvent event) {
         Utils.updatePlayerInventorySlots(event.getPlayer());
+    }
+
+    private void handleIronTrapdoorClick(PlayerInteractEvent event) {
+        if (!event.getAction().equals(Action.RIGHT_CLICK_AIR) && !event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) return;
+        if (event.getHand() == EquipmentSlot.OFF_HAND) return;
+        if (event.getPlayer().isSneaking()) return;
+        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.IRON_TRAPDOOR) return;
+
+        RegionContainer regionContainer = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionQuery query = regionContainer.createQuery();
+
+        if (!query.testBuild(BukkitAdapter.adapt(event.getPlayer().getLocation()), PlotSystem.DependencyManager.getWorldGuard().wrapPlayer(event.getPlayer()), Flags.INTERACT)) return;
+
+        BlockState state = event.getClickedBlock().getState();
+        Openable tp = (Openable) state.getBlockData();
+        if (!tp.isOpen()) {
+            tp.setOpen(true);
+            event.getPlayer().playSound(event.getClickedBlock().getLocation(), "block.iron_trapdoor.open", 1f, 1f);
+        } else {
+            tp.setOpen(false);
+            event.getPlayer().playSound(event.getClickedBlock().getLocation(), "block.iron_trapdoor.close", 1f, 1f);
+        }
+        state.update();
+    }
+
+    private void sendNotices(Player player, Builder builder) {
+        // Inform player about update
+        if (player.hasPermission("plotsystem.admin") && PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.CHECK_FOR_UPDATES) && PlotSystem.UpdateChecker.updateAvailable()) {
+            player.sendMessage(Utils.ChatUtils.getInfoFormat("There is a new update for the Plot-System available. Check your console for more information!"));
+            player.playSound(player.getLocation(), Utils.SoundUtils.NOTIFICATION_SOUND, 1f, 1f);
+        }
+
+        // Informing player about new feedback
+        try {
+            List<Plot> plots = DataProvider.PLOT.getPlots(builder, Status.completed, Status.unfinished);
+            List<Plot> reviewedPlots = new ArrayList<>();
+
+            for (Plot plot : plots) {
+                if (plot.isReviewed() && !plot.getReview().isFeedbackSent()) {
+                    reviewedPlots.add(plot);
+                    plot.getReview().setFeedbackSent(true);
+                }
+            }
+
+            if (!reviewedPlots.isEmpty()) {
+                PlotUtils.ChatFormatting.sendFeedbackMessage(reviewedPlots, player);
+                String subtitleText = " Plot" + (reviewedPlots.size() == 1 ? " " : "s ") + (reviewedPlots.size() == 1 ? "has" : "have") + " been reviewed!";
+                player.showTitle(Title.title(
+                        empty(),
+                        text(reviewedPlots.size(), GOLD).decoration(BOLD, true).append(text(subtitleText, GREEN).decoration(BOLD, true)),
+                        Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(8), Duration.ofSeconds(1)))
+                );
+            }
+        } catch (SQLException ex) {
+            PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while trying to inform the player about his plot feedback!"), ex);
+        }
+
+        // Informing player about unfinished plots
+        try {
+            List<Plot> plots = DataProvider.PLOT.getPlots(builder, Status.unfinished);
+            if (!plots.isEmpty()) {
+                PlotUtils.ChatFormatting.sendUnfinishedPlotReminderMessage(plots, player);
+                player.sendMessage("");
+            }
+        } catch (Exception ex) {
+            PlotSystem.getPlugin().getComponentLogger().error(text("An error occurred while trying to inform the player about his unfinished plots!"), ex);
+        }
+
+        // Informing reviewer about new reviews
+        if (player.hasPermission("plotsystem.admin") || DataProvider.BUILDER.isAnyReviewer(builder.getUUID())) {
+            List<Country> reviewerCountries = DataProvider.BUILD_TEAM.getReviewerCountries(builder);
+            List<Plot> unreviewedPlots = DataProvider.PLOT.getPlots(reviewerCountries, Status.unreviewed);
+
+            if (!unreviewedPlots.isEmpty()) {
+                PlotUtils.ChatFormatting.sendUnreviewedPlotsReminderMessage(unreviewedPlots, player);
+            }
+        }
+
+
+        // Start or notify the player if he has not completed the beginner tutorial yet (only if required)
+        if (PlotSystem.getPlugin().getConfig().getBoolean(ConfigPaths.TUTORIAL_REQUIRE_BEGINNER_TUTORIAL) &&
+                TutorialPlot.isInProgress(TutorialCategory.BEGINNER.getId(), player.getUniqueId())) {
+            if (!player.hasPlayedBefore()) {
+                Bukkit.getScheduler().runTask(PlotSystem.getPlugin(),
+                        () -> player.performCommand("tutorial " + TutorialCategory.BEGINNER.getId()));
+            } else {
+                AbstractPlotTutorial.sendTutorialRequiredMessage(player, TutorialCategory.BEGINNER.getId());
+                player.playSound(player.getLocation(), Utils.SoundUtils.NOTIFICATION_SOUND, 1f, 1f);
+            }
+        }
     }
 }

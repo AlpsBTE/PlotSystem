@@ -26,6 +26,7 @@ package com.alpsbte.plotsystem.utils;
 
 import com.alpsbte.alpslib.utils.AlpsUtils;
 import com.alpsbte.alpslib.utils.head.AlpsHeadUtils;
+import com.alpsbte.alpslib.utils.item.ItemBuilder;
 import com.alpsbte.plotsystem.PlotSystem;
 import com.alpsbte.plotsystem.core.menus.ReviewMenu;
 import com.alpsbte.plotsystem.core.menus.companion.CompanionMenu;
@@ -45,6 +46,7 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -54,7 +56,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Objects;
@@ -99,6 +100,21 @@ public class Utils {
         });
     }
 
+    // TODO: extract to alpsLibs?
+    public static ItemStack getConfiguredItem(String material, Object customModelData) {
+        ItemStack base;
+        if (material.startsWith("head(") && material.endsWith(")")) {
+            String headId = material.substring(material.indexOf("(") + 1, material.lastIndexOf(")"));
+            base = AlpsHeadUtils.getCustomHead(headId);
+        } else {
+            Material mat = Material.getMaterial(material);
+            base = new ItemStack(mat == null ? Material.BARRIER : mat);
+        }
+        ItemBuilder builder = new ItemBuilder(base);
+        if (customModelData != null) builder.setItemModel(customModelData);
+
+        return builder.build();
+    }
 
     public static class SoundUtils {
         private SoundUtils() {}
@@ -227,7 +243,8 @@ public class Utils {
         return random;
     }
 
-    public static boolean isOwnerOrReviewer(CommandSender sender, @Nullable Player player, Plot plot) throws SQLException {
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public static boolean isOwnerOrReviewer(CommandSender sender, @Nullable Player player, Plot plot) {
         boolean hasPermission = sender.hasPermission("plotsystem.review") || (player != null && Objects.requireNonNull(plot).getPlotOwner().getUUID().equals(player.getUniqueId()));
         if (!hasPermission) {
             sender.sendMessage(Utils.ChatUtils.getAlertFormat(LangUtil.getInstance().get(sender, LangPaths.Message.Error.PLAYER_IS_NOT_ALLOWED)));
